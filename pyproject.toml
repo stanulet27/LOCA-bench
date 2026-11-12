@@ -49,7 +49,6 @@ dependencies = [
    "ruff",
   "black",
   "mypy>=1.0.0",
-  "fastmcp>=2.0.0",
   "pyyaml>=6.0.0",
   "pydantic-core",
   "excel-mcp-server",

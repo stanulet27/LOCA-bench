@@ -41,6 +41,7 @@ class SetConfCrDdlS2LEnv(Env):
         seed: int = 42,
         difficulty: Optional[str] = None,
         verbose: bool = False,
+        perturbations: None| dict = None,
         **_,
     ):
         """Initialize the Set Conference Camera-Ready Deadline S2L Environment.
@@ -88,6 +89,7 @@ class SetConfCrDdlS2LEnv(Env):
         self.deadline_offset = deadline_offset
         self.seed = seed
         self.difficulty = difficulty
+        self.perturbations = perturbations
 
         self.reset()
     
@@ -265,6 +267,14 @@ class SetConfCrDdlS2LEnv(Env):
 
                 # Files are already generated in the correct locations, no need to move
                 
+                if self.perturbations:
+                    import json
+                    gt_dir = Path(self.task_dir) / 'groundtruth_workspace'
+                    gt_dir.mkdir(parents=True, exist_ok=True)
+                    with open(gt_dir / 'perturbations.json', 'w') as f:
+                        json.dump(self.perturbations, f)
+                    self.logger.info("wrote perturbations to ground truth")
+
             except Exception as e:
                 self.logger.error(f"Error running preprocessing: {e}")
                 self.logger.error(traceback.format_exc())

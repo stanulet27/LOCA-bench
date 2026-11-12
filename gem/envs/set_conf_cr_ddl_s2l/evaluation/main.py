@@ -10,6 +10,24 @@ import json
 
 from mcp_convert.mcps.calendar.database_utils import CalendarDatabase
 
+def load_offset(gt_dir, task_root):
+
+    schedule_f = Path(gt_dir)/'perturbations.json'
+    if not schedule_f.exists():
+        return 3,[] # expected reminder is normall 3 hours before without perturbs
+
+    with open(schedule_f, 'r') as f:
+        schedule = json.load(f)
+    base = schedule.get('base_offset_hours',3)
+    delivered_ids = set()
+    if task_root:
+        log_f = Path(task_root)/'perturbation_log.json'
+        if log_f.exists():
+            with open(log_f, 'r') as f:
+                # find which perturbs we actually send and derive expected time for checker
+                delivered_ids = {d['id'] for d in json.load(f).get('delivered',[])}
+    delivered = [r for r in schedule.get('revisions',[]) if r['id'] in delivered_ids]
+    return base + sum(r['delta_hours'] for r in delivered), delivered
 
 def parse_iso_time(iso_string):
     """
@@ -128,6 +146,11 @@ def main(args):
         # Fallback to script relative path
         groundtruth_dir = Path(__file__).parent.parent / "groundtruth_workspace"
     metadata_file = groundtruth_dir / "conference_metadata.json"
+
+    expected_offset, delivered_revisions = load_offset(groundtruth_dir, args.task_root)
+    print('expected offset', expected_offset)
+    for r in delivered_revisions:
+        print(f"revision {r['id']} ({r.get('trigger', 'step ' + str(r.get('step')))}): +{r['delta_hours']}h")
     
     # Store all validation targets
     validation_targets = []
@@ -151,12 +174,12 @@ def main(args):
             
             # Calculate reminder time (deadline - 3 hours)
             deadline_dt = parse_iso_time(deadline_str)
-            reminder_dt = deadline_dt - timedelta(hours=3)
+            reminder_dt = deadline_dt - timedelta(hours=expected_offset)
             
             # Generate keywords
             keywords = [conf_key.lower(), 'camera', 'ready']
             
-            validation_targets.append({
+            validation_targets.append({     
                 'conference': conf_key,
                 'full_name': full_name,
                 'track': track,
